@@ -11,7 +11,8 @@
   "scripts": {
     "start": "npm-run-all --parallel start:client start:server",
     "start:server": "npm --prefix server run dev",
-    "start:client": "npm --prefix client run dev"
+    "start:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build"
   },
   "repository": {
     "type": "git",

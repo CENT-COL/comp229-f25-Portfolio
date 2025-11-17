@@ -3,6 +3,12 @@ import morgan from 'morgan';
 import mongoose from "mongoose";
 import dotenv from 'dotenv/config';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI);
 const connection = mongoose.connection;
@@ -26,6 +32,13 @@ app.use('/api/users', userRoutes)
 app.use('/api/data', (req, res) => {
     res.json({ message: 'Hello from the API! Again' });
 });
+
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+    app.get(/^(?!\/api).*/, (req, res) => {
+        res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+    });
+}
 
 
 app.listen(3000);
