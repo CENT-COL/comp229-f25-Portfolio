@@ -1,7 +1,9 @@
 import './App.css'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase.js';
 
 // Components
 import Home from './components/home.jsx';
@@ -12,23 +14,27 @@ import ProjectDetails from './components/project-details.jsx';
 
 function App() {
 
-  const getUserFromStorage = () => {
-    const token = localStorage.getItem("token");
-    const username = localStorage.getItem("username");
+  const [user, setUser] = useState(null);
 
-    return token && username ? { username } : null;
-  }
-
-  const [user, setUser] = useState(getUserFromStorage());
-
+  // Keep local user state in sync with Firebase auth changes
   useEffect(() => {
-    setUser(getUserFromStorage());
-  }, [])
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          username: firebaseUser.displayName || firebaseUser.email || 'User',
+          email: firebaseUser.email,
+          uid: firebaseUser.uid,
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    setUser(null);
+    signOut(auth);
   }
 
 

@@ -1,114 +1,122 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '../firebase';
 
 const ProjectsList = () => {
-    const [projects, setProjects] = useState([]);
-    const navigate = useNavigate();
+  const [projects, setProjects] = useState([]);
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        const fetchProjects = async () => {
-            try {
-                const token = localStorage.getItem('token');
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        navigate('/login');
+        return;
+      }
 
-                if (!token) {
-                    navigate('/login');
-                    return;
-                }
-
-                const response = await fetch('/api/projects', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(data.message)
-                }
-
-                const data = await response.json();
-                setProjects(data);
-
-            } catch (error) {
-                console.error(`Error fetching projects: ${error.message}`);
-            }
-        }
-        fetchProjects();
-    }, [])
-
-    const handleDelete = async (projectId) => {
-        const token = localStorage.getItem('token');
-
-        if (!token) {
-            navigate('/login');
-            console.error('No token found, redirecting to login');
-            return;
-        }
-
+      const fetchProjects = async () => {
         try {
-            const response = await fetch(`/api/projects/${projectId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                }
-            });
+          const projectsRef = collection(db, 'projects');
+          const q = query(projectsRef, where('ownerId', '==', currentUser.uid));
+          const snapshot = await getDocs(q);
 
-            if (!response.ok) {
-                throw new Error('Failed to delete project');
-            }
+          const fetchedProjects = snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...docSnap.data(),
+          }));
 
-            setProjects(prevProjects => prevProjects.filter(project => project._id !== projectId));
-
+          setProjects(fetchedProjects);
         } catch (error) {
-            console.error(`Error deleting project: ${error.message}`);
+          console.error(`Error fetching projects: ${error.message}`);
         }
+      };
+
+      fetchProjects();
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const handleDelete = async (projectId) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      navigate('/login');
+      return;
     }
 
+    try {
+      await deleteDoc(doc(db, 'projects', projectId));
+      setProjects((prev) => prev.filter((project) => project.id !== projectId));
+    } catch (error) {
+      console.error(`Error deleting project: ${error.message}`);
+    }
+  };
 
-    return (
-        <div className="container mt4">
-            <h1 className="text-center">Projects</h1>
-            <button className="btn btn-primary mb-3" onClick={() => navigate('/project-details')}>Create New Project</button>
+  return (
+    <div className="container mt-4">
+      <h1 className="text-center">Projects</h1>
+      <button
+        className="btn btn-primary mb-3"
+        onClick={() => navigate('/project-details')}
+      >
+        Create New Project
+      </button>
 
-            {projects.length > 0 ? (
-                <>
-                    <table className="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Description</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Actions</th>
-                            </tr>
-
-                        </thead>
-                        <tbody>
-                            {projects.map((project) => (
-                                <tr key={project._id}>
-                                    <td>{project.name}</td>
-                                    <td>{project.description}</td>
-                                    <td>{new Date(project.startDate).toLocaleDateString()}</td>
-                                    <td>{new Date(project.endDate).toLocaleDateString()}</td>
-                                    {/* <td>{project.startDate}</td> */}
-                                    <td>
-                                        <button className="btn btn-secondary mr-2" onClick={() => navigate(`/project-details/${project._id}`)}>Update</button>
-                                        <button className="btn btn-danger" onClick={() => handleDelete(project._id)}>Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </>)
-                :
-                (
-                    <>
-                        <p className='text-center'>No projects available</p>
-                    </>
-                )}
-
-        </div>
-    )
-}
+      {projects.length > 0 ? (
+        <>
+          <table className="table table-striped">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((project) => (
+                <tr key={project.id}>
+                  <td>{project.name}</td>
+                  <td>{project.description}</td>
+                  <td>
+                    {project.startDate
+                      ? new Date(project.startDate).toLocaleDateString()
+                      : '-'}
+                  </td>
+                  <td>
+                    {project.endDate
+                      ? new Date(project.endDate).toLocaleDateString()
+                      : '-'}
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-secondary mr-2"
+                      onClick={() => navigate(`/project-details/${project.id}`)}
+                    >
+                      Update
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleDelete(project.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ) : (
+        <>
+          <p className="text-center">No projects available</p>
+        </>
+      )}
+    </div>
+  );
+};
 
 export default ProjectsList;
