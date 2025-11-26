@@ -11,7 +11,9 @@
   "scripts": {
     "start": "npm-run-all --parallel start:client start:server",
     "start:server": "npm --prefix server run dev",
-    "start:client": "npm --prefix client run dev"
+    "start:client": "npm --prefix client run dev",
+    "test": "npm --prefix client run test",
+    "e2e": "cypress open"
   },
   "repository": {
     "type": "git",
@@ -28,6 +30,7 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "bootstrap": "^5.3.8",
+    "cypress": "^15.7.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
