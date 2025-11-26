@@ -5,6 +5,8 @@ const userSchema = new mongoose.Schema({
     username: String,
     email: { type: String, unique: true },
     password: String,
+    otpSecret: { type: String, default: null },
+    is2FAEnabled: { type: Boolean, default: false },
 });
 
 userSchema.pre('save', async function (next) {
